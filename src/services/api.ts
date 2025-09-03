@@ -1,8 +1,23 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+import type { QuizDto, QuizAttemptResultDto } from '@/types';
+
+const API_BASE_URL = '/api';
+
+async function parseJsonSafe(response: Response) {
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const text = await response.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error(text || `HTTP ${response.status}`);
+    }
+  }
+  return response.json();
+}
 
 // Auth service
 export const authService = {
-  async login(email: string, password: string) {
+  async login(email: string, password: string): Promise<{ token: string; user: any; }> {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: {
@@ -12,16 +27,16 @@ export const authService = {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Login failed');
+      const data = await parseJsonSafe(response);
+      throw new Error((data && data.error) || 'Login failed');
     }
 
-    const data = await response.json();
+    const data = await parseJsonSafe(response);
     localStorage.setItem('token', data.token);
     return data;
   },
 
-  async register(email: string, password: string, name: string, role: string = 'student') {
+  async register(email: string, password: string, name: string, role: string = 'student'): Promise<{ token: string; user: any; }> {
     const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
       headers: {
@@ -31,16 +46,16 @@ export const authService = {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Registration failed');
+      const data = await parseJsonSafe(response);
+      throw new Error((data && data.error) || 'Registration failed');
     }
 
-    const data = await response.json();
+    const data = await parseJsonSafe(response);
     localStorage.setItem('token', data.token);
     return data;
   },
 
-  async verifyToken() {
+  async verifyToken(): Promise<{ user: any; }> {
     const token = localStorage.getItem('token');
     if (!token) {
       throw new Error('No token found');
@@ -54,10 +69,11 @@ export const authService = {
 
     if (!response.ok) {
       localStorage.removeItem('token');
-      throw new Error('Token verification failed');
+      const data = await parseJsonSafe(response);
+      throw new Error((data && data.error) || 'Token verification failed');
     }
 
-    return response.json();
+    return parseJsonSafe(response);
   },
 
   logout() {
@@ -67,7 +83,7 @@ export const authService = {
 
 // Quiz service
 export const quizService = {
-  async getQuizzes() {
+  async getQuizzes(): Promise<any[]> {
     const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE_URL}/quizzes`, {
       headers: {
@@ -76,13 +92,14 @@ export const quizService = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch quizzes');
+      const data = await parseJsonSafe(response);
+      throw new Error((data && data.error) || 'Failed to fetch quizzes');
     }
 
-    return response.json();
+    return parseJsonSafe(response);
   },
 
-  async getQuiz(id: number) {
+  async getQuiz(id: number): Promise<any> {
     const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE_URL}/quizzes/${id}`, {
       headers: {
@@ -91,13 +108,14 @@ export const quizService = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch quiz');
+      const data = await parseJsonSafe(response);
+      throw new Error((data && data.error) || 'Failed to fetch quiz');
     }
 
-    return response.json();
+    return parseJsonSafe(response);
   },
 
-  async createQuiz(quiz: any) {
+  async createQuiz(quiz: QuizDto): Promise<any> {
     const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE_URL}/quizzes`, {
       method: 'POST',
@@ -109,13 +127,14 @@ export const quizService = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to create quiz');
+      const data = await parseJsonSafe(response);
+      throw new Error((data && data.error) || 'Failed to create quiz');
     }
 
-    return response.json();
+    return parseJsonSafe(response);
   },
 
-  async updateQuiz(id: number, quiz: any) {
+  async updateQuiz(id: number, quiz: QuizDto): Promise<any> {
     const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE_URL}/quizzes/${id}`, {
       method: 'PUT',
@@ -127,13 +146,14 @@ export const quizService = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to update quiz');
+      const data = await parseJsonSafe(response);
+      throw new Error((data && data.error) || 'Failed to update quiz');
     }
 
-    return response.json();
+    return parseJsonSafe(response);
   },
 
-  async deleteQuiz(id: number) {
+  async deleteQuiz(id: number): Promise<any> {
     const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE_URL}/quizzes/${id}`, {
       method: 'DELETE',
@@ -143,13 +163,14 @@ export const quizService = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to delete quiz');
+      const data = await parseJsonSafe(response);
+      throw new Error((data && data.error) || 'Failed to delete quiz');
     }
 
-    return response.json();
+    return parseJsonSafe(response);
   },
 
-  async submitQuiz(id: number, answers: number[]) {
+  async submitQuiz(id: number, answers: number[]): Promise<QuizAttemptResultDto> {
     const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE_URL}/quizzes/${id}/submit`, {
       method: 'POST',
@@ -161,13 +182,14 @@ export const quizService = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to submit quiz');
+      const data = await parseJsonSafe(response);
+      throw new Error((data && data.error) || 'Failed to submit quiz');
     }
 
-    return response.json();
+    return parseJsonSafe(response);
   },
 
-  async getQuizAttempts(id: number) {
+  async getQuizAttempts(id: number): Promise<any[]> {
     const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE_URL}/quizzes/${id}/attempts`, {
       headers: {
@@ -176,13 +198,14 @@ export const quizService = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch quiz attempts');
+      const data = await parseJsonSafe(response);
+      throw new Error((data && data.error) || 'Failed to fetch quiz attempts');
     }
 
-    return response.json();
+    return parseJsonSafe(response);
   },
 
-  async getUserAttempts() {
+  async getUserAttempts(): Promise<any[]> {
     const token = localStorage.getItem('token');
     const response = await fetch(`${API_BASE_URL}/quizzes/user/attempts`, {
       headers: {
@@ -191,9 +214,10 @@ export const quizService = {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch user attempts');
+      const data = await parseJsonSafe(response);
+      throw new Error((data && data.error) || 'Failed to fetch user attempts');
     }
 
-    return response.json();
+    return parseJsonSafe(response);
   }
 };

@@ -1,14 +1,13 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
-import { initializeDatabase } from './database';
-import authRoutes from './routes/auth';
-import quizRoutes from './routes/quizzes';
-
-dotenv.config();
+import env from './src/config/env';
+import initializeDatabase from './src/db/init';
+import pool from './src/db/pool';
+import authRoutes from './src/routes/auth.routes';
+import quizRoutes from './src/routes/quiz.routes';
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = env.PORT || 5000;
 
 // Middleware
 app.use(cors());
@@ -18,9 +17,14 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/quizzes', quizRoutes);
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Quiz Management API is running' });
+// Health check endpoint (includes DB ping)
+app.get('/api/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'OK', db: true, message: 'Quiz Management API is running' });
+  } catch (e: any) {
+    res.status(500).json({ status: 'ERROR', db: false, error: e?.message || 'DB error' });
+  }
 });
 
 // Initialize database and start server
