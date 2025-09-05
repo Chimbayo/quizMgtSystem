@@ -1,0 +1,101 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String   // In production, this should be hashed
+  role      String   @default("STUDENT") // ADMIN or STUDENT
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  attempts    QuizAttempt[]
+  createdQuizzes Quiz[] @relation("QuizCreator")
+
+  @@map("users")
+}
+
+model Quiz {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  passingScore Int     @default(60) // Percentage
+  timeLimit   Int?     // in minutes
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  creatorId   String
+  creator     User   @relation("QuizCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  questions   Question[]
+  attempts    QuizAttempt[]
+
+  @@map("quizzes")
+}
+
+model Question {
+  id       String       @id @default(cuid())
+  text     String
+  type     String       // MULTIPLE_CHOICE or TRUE_FALSE
+  order    Int
+  quizId   String
+  quiz     Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  options  QuestionOption[]
+  answers  Answer[]
+
+  @@map("questions")
+}
+
+model QuestionOption {
+  id         String   @id @default(cuid())
+  text       String
+  isCorrect  Boolean  @default(false)
+  order      Int
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@map("question_options")
+}
+
+model QuizAttempt {
+  id        String   @id @default(cuid())
+  score     Int      // Percentage
+  passed    Boolean
+  startedAt DateTime @default(now())
+  completedAt DateTime?
+  timeSpent Int?     // in seconds
+
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizId    String
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers   Answer[]
+
+  @@map("quiz_attempts")
+}
+
+model Answer {
+  id         String   @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  attemptId  String
+  attempt    QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  selectedOptionId String?
+  isCorrect  Boolean
+
+  @@unique([questionId, attemptId])
+  @@map("answers")
+}
